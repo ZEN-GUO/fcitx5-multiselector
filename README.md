@@ -92,12 +92,13 @@ toolbox run -c fcitx5-build sudo dnf install -y fcitx5-devel cmake gcc-c++
 | Bazzite（Fedora 44）+ KDE Plasma Wayland + fcitx5 5.1.22 拼音 | ✅ | 作者日常使用；安装用的是上面的 toolbox 方法 |
 | Fedora 44（fcitx5 5.1.23）| ✅ | 在干净的容器里按本文第 1–4 步安装，用虚拟 X11 显示逐步截图核对：展开、移动、翻页、收起、选词上屏、卸载 |
 | Debian 13（fcitx5 5.1.12）| ✅ | 同上 |
+| Ubuntu 26.04（fcitx5 5.1.19）| ✅ | 仓库内 `ctest` 无头集成测试：一行 ← → 选词、↓ 展开、方向键移动、Esc 收起、上屏 |
 | Ubuntu 24.04（fcitx5 5.1.7）及更低版本 | ❌ | 编译失败，不支持 |
 | 其他发行版、GNOME / Sway 等其他桌面 | 未测试 | |
 | Rime 等其他 fcitx5 输入法 | 未测试 | |
 | kimpanel 等非经典界面（classicui）的候选框 | 未测试 | |
 
-v0.0.3 新增的一行 ← → 选词：在 Fedora 44（fcitx5 5.1.23）的隔离虚拟显示里逐项核对过（选词、跨页、两端停住、空格上屏、接着按 ↓ 展开）；Debian 13 只验证了能编译，其他环境未测试。
+v0.0.3 新增的一行 ← → 选词：在 Fedora 44（fcitx5 5.1.23）的隔离虚拟显示里逐项核对过（选词、跨页、两端停住、空格上屏、接着按 ↓ 展开）；Debian 13 只验证了能编译，其他环境未测试。Ubuntu 26.04（fcitx5 5.1.19）也通过了仓库内的无头集成测试（一行 ← → 选词、展开、移动、收起、上屏）。
 
 欢迎在 Issue 里反馈你的测试结果。
 
