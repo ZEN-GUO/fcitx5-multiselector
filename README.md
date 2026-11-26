@@ -106,6 +106,9 @@ v0.0.3 新增的一行 ← → 选词：在 Fedora 44（fcitx5 5.1.23）的隔�
 **装了按 ↓ 没反应？**
 先确认 fcitx5 已经重启过，再看日志里有没有 `Loaded addon multiselector`。比如 KDE 下 fcitx5 由 KWin 启动，可以运行 `journalctl --user -b | grep multiselector`。
 
+**Ubuntu 24.04 为什么编译失败？**
+Ubuntu 24.04 自带 fcitx5 5.1.7，缺少插件使用的 `CandidateList::toBulkCursor`、`toCursorModifiable`、`toActionable`，以及 `FCITX_ADDON_FACTORY_V2_BACKWARDS` 宏；CMake 也会因为要求 5.1.12 而直接失败。fcitx5 5.1.12 起才能编译（Debian 13、Ubuntu 26.04 等已验证）。
+
 **能改成 4×7 或别的大小吗？**
 目前固定为 4×8，暂时不能调整。
 
@@ -130,6 +133,30 @@ kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod /usr/shar
 - 网格大小固定为 4×8。
 - 有候选时 ← → 用来选词，不能再用它们在拼音里移动光标（比如把 `shi` 改成 `shai`）。要改拼音，可以用退格删掉重打。
 - fcitx5 升级大版本后需要重新运行 `./install.sh`。
+
+## 开发与测试
+
+构建（开发用，带调试信息和 `compile_commands.json`）：
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build
+```
+
+集成测试会启动一个私有的 fcitx5（临时 HOME、独立 DBus 和 Xvfb 显示），加载刚编译的插件，真实输入拼音并检查：一行候选、↓ 展开、方向键移动、Esc 收起、空格上屏。它不会碰你正在用的 fcitx5 和 `~/.local`：
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+测试依赖：`xvfb openbox xdotool xclip python3-gi gir1.2-gtk-3.0 dbus-daemon imagemagick`，以及 fcitx5 拼音和 GTK3 frontend。缺少依赖时测试自动跳过（exit 77）。截图在 `build/test-artifacts/latest/`；失败时完整日志保留在 `build/test-artifacts/`。
+
+单独运行：
+
+```bash
+tests/integration.sh build/multiselector.so
+```
 
 ## 原理（给开发者）
 
@@ -164,3 +191,7 @@ or IME settings are modified. Requires fcitx5 ≥ 5.1.12. Build and install with
 `./install.sh`; remove with `./uninstall.sh`. Used daily on KDE Plasma Wayland
 with fcitx5 Pinyin (Bazzite / Fedora 44); the install steps were tested end to
 end in clean Fedora 44 and Debian 13 containers. Other setups are untested.
+
+For development, build with CMake and run the headless integration test with
+`ctest --test-dir build --output-on-failure`; it uses a private Xvfb display,
+DBus session and HOME, so it never touches your running fcitx5.
