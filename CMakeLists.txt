@@ -10,3 +10,14 @@ set_target_properties(multiselector PROPERTIES PREFIX "")
 if(Fcitx5Core_VERSION VERSION_GREATER_EQUAL 5.1.20)
   target_compile_definitions(multiselector PRIVATE MULTISELECTOR_HAS_TABBED)
 endif()
+
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME integration
+           COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration.sh
+                   $<TARGET_FILE:multiselector>)
+  set_tests_properties(integration PROPERTIES
+    SKIP_RETURN_CODE 77
+    TIMEOUT 180
+    ENVIRONMENT "ARTIFACTS=${CMAKE_CURRENT_BINARY_DIR}/test-artifacts")
+endif()
