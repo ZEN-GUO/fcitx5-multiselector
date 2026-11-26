@@ -203,20 +203,78 @@ cand_id() { xdotool search --class '^fcitx$' 2>/dev/null | head -1 || true; }
 win_h() { xdotool getwindowgeometry --shell "$1" 2>/dev/null | awk -F= '/^HEIGHT=/{print $2}'; }
 win_w() { xdotool getwindowgeometry --shell "$1" 2>/dev/null | awk -F= '/^WIDTH=/{print $2}'; }
 
+wait_candidate() {
+    local id
+    for _ in $(seq 1 50); do
+        id=$(cand_id)
+        if [ -n "$id" ]; then
+            echo "$id"
+            return 0
+        fi
+        sleep 0.1
+    done
+    return 1
+}
+
+read_entry() {
+    printf '' | timeout 2 xclip -selection clipboard >/dev/null 2>&1 || true
+    xdotool key ctrl+a
+    xdotool key ctrl+c
+    sleep 0.5
+    timeout 5 xclip -selection clipboard -o 2>/dev/null || true
+}
+
+clear_entry() {
+    xdotool key ctrl+a
+    xdotool key BackSpace
+    sleep 0.3
+}
+
+assert_cjk() {
+    local text=$1 label=$2
+    if ! printf '%s' "$text" | python3 -c \
+        'import sys; t = sys.stdin.read(); raise SystemExit(0 if any(ord(c) > 0x2E80 for c in t) else 1)'; then
+        fail "$label: committed text has no CJK characters: '$text'"
+    fi
+}
+
+# One-line list: Space commits the highlighted candidate.
 xdotool type --delay 120 'shi'
-ID=""
-for _ in $(seq 1 50); do
-    ID=$(cand_id)
-    [ -n "$ID" ] && break
-    sleep 0.1
-done
-[ -n "$ID" ] || fail "fcitx5 candidate window did not appear"
+ID=$(wait_candidate) || fail "fcitx5 candidate window did not appear"
 sleep 0.8
 H1=$(win_h "$ID")
 W1=$(win_w "$ID")
 import -window root "$SHOTS/1-one-line.png" 2>/dev/null || true
 ((H1 > 10 && H1 < 80)) || fail "expected a one-line candidate window, got height $H1"
 
+xdotool key space
+sleep 1.0
+TEXT1=$(read_entry)
+assert_cjk "$TEXT1" "one-line Space"
+echo "one-line commit: $TEXT1"
+clear_entry
+
+# One-line list: Right moves the highlight, so the next Space commits a
+# different candidate.
+xdotool type --delay 120 'shi'
+ID=$(wait_candidate) || fail "candidate window did not reappear"
+sleep 0.6
+xdotool key Right
+sleep 0.5
+import -window root "$SHOTS/1b-right.png" 2>/dev/null || true
+xdotool key space
+sleep 1.0
+TEXT2=$(read_entry)
+assert_cjk "$TEXT2" "one-line Right+Space"
+[ "$TEXT2" != "$TEXT1" ] \
+    || fail "Right did not change the highlighted candidate (both '$TEXT1')"
+echo "one-line Right commit: $TEXT2"
+clear_entry
+
+# Grid: Down expands, arrows move, Escape collapses, Space commits.
+xdotool type --delay 120 'shi'
+ID=$(wait_candidate) || fail "candidate window did not reappear for the grid test"
+sleep 0.5
 xdotool key Down
 sleep 1.2
 ID=$(cand_id)
@@ -252,16 +310,9 @@ xdotool key space
 sleep 1.0
 import -window root "$SHOTS/5-committed.png" 2>/dev/null || true
 
-xdotool key ctrl+a
-xdotool key ctrl+c
-sleep 0.4
-TEXT=$(timeout 5 xclip -selection clipboard -o 2>/dev/null || true)
-[ -n "$TEXT" ] || fail "nothing was committed to the text entry"
-if ! printf '%s' "$TEXT" | python3 -c \
-    'import sys; t = sys.stdin.read(); raise SystemExit(0 if any(ord(c) > 0x2E80 for c in t) else 1)'; then
-    fail "committed text does not contain CJK characters: '$TEXT'"
-fi
-echo "committed text: $TEXT"
+TEXT3=$(read_entry)
+assert_cjk "$TEXT3" "grid commit"
+echo "grid commit: $TEXT3"
 
-echo "PASS: multiselector loaded and grid expand/move/collapse/commit worked"
+echo "PASS: multiselector loaded; one-line select and grid expand/move/collapse/commit worked"
 echo "screenshots: $ARTIFACTS/latest"
